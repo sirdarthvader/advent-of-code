@@ -1,5 +1,35 @@
+/**
+ * --- Part Two ---
+  The Elf looks quizzically at you. Did you misunderstand the assignment?
+
+  Looking for the instructions, you flip over the word search to find that this isn't actually an XMAS puzzle; it's an X-MAS puzzle in which you're supposed to find two MAS in the shape of an X. One way to achieve that is like this:
+
+  M.S
+  .A.
+  M.S
+  Irrelevant characters have again been replaced with . in the above diagram. Within the X, each MAS can be written forwards or backwards.
+
+  Here's the same example from before, but this time all of the X-MASes have been kept instead:
+
+  .M.S......
+  ..A..MSMS.
+  .M.S.MAA..
+  ..A.ASMSM.
+  .M.S.M....
+  ..........
+  S.S.S.S.S.
+  .A.A.A.A..
+  M.M.M.M.M.
+  ..........
+  In this example, an X-MAS appears 9 times.
+
+  Flip the word search from the instructions back over to the word search side and try again. How many times does an X-MAS appear?
+
+ */
 import * as fs from "fs";
 import * as path from "path";
+
+const patterns = ["MAS", "SAM"];
 
 function countXMAS(grid: string[]): number {
   const rows = grid.length;
@@ -11,7 +41,7 @@ function countXMAS(grid: string[]): number {
 
   let count = 0;
 
-  function isXMAS(
+  function isMAS(
     x: number,
     y: number,
     dx1: number,
@@ -19,37 +49,23 @@ function countXMAS(grid: string[]): number {
     dx2: number,
     dy2: number
   ): boolean {
-    return (
-      isMAS(x + dx1, y + dy1, dx1, dy1) && isMAS(x + dx2, y + dy2, dx2, dy2)
-    );
-  }
-
-  function isMAS(x: number, y: number, dx: number, dy: number): boolean {
-    const pattern = "MAS";
-    for (let i = 0; i < pattern.length; i++) {
-      const newX = x + i * dx;
-      const newY = y + i * dy;
-      if (
-        newX < 0 ||
-        newX >= rows ||
-        newY < 0 ||
-        newY >= cols ||
-        grid[newX][newY] !== pattern[i]
-      ) {
-        return false;
-      }
-    }
-    return true;
+    const str =
+      (grid[x + dx1]?.[y + dy1] || "") +
+      grid[x][y] +
+      (grid[x + dx2]?.[y + dy2] || "");
+    return patterns.includes(str);
   }
 
   for (let x = 0; x < rows; x++) {
     for (let y = 0; y < cols; y++) {
       if (grid[x][y] === "A") {
         // 'A' is the center of the X-MAS
+        let isXMAS = true;
         for (const { dx1, dy1, dx2, dy2 } of directions) {
-          if (isXMAS(x, y, dx1, dy1, dx2, dy2)) {
-            count++;
-          }
+          isXMAS = isXMAS && isMAS(x, y, dx1, dy1, dx2, dy2);
+        }
+        if (isXMAS) {
+          count++;
         }
       }
     }
