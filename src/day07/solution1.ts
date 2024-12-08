@@ -33,32 +33,6 @@ import * as fs from "fs";
 import * as path from "path";
 
 function calculateTotalCalibration(filePath: string): number {
-  // Helper function to compute all combinations of operators
-  function computeWithOperators(
-    numbers: number[],
-    operators: string[]
-  ): number {
-    let result = numbers[0];
-    for (let i = 0; i < operators.length; i++) {
-      if (operators[i] === "+") {
-        result += numbers[i + 1];
-      } else if (operators[i] === "*") {
-        result *= numbers[i + 1];
-      }
-    }
-    return result;
-  }
-
-  // Generate all combinations of operators for a given number of slots
-  function generateOperatorsCombinations(slots: number): string[][] {
-    if (slots === 0) return [[]];
-    const smallerCombinations = generateOperatorsCombinations(slots - 1);
-    return smallerCombinations.flatMap((combination) => [
-      [...combination, "+"],
-      [...combination, "*"],
-    ]);
-  }
-
   let totalCalibration = 0;
 
   // Read the input file
@@ -93,6 +67,29 @@ function calculateTotalCalibration(filePath: string): number {
   }
 
   return totalCalibration;
+}
+
+// Helper function to compute all combinations of operators
+function computeWithOperators(numbers: number[], operators: string[]): number {
+  let result = numbers[0];
+  for (let i = 0; i < operators.length; i++) {
+    if (operators[i] === "+") {
+      result += numbers[i + 1];
+    } else if (operators[i] === "*") {
+      result *= numbers[i + 1];
+    }
+  }
+  return result;
+}
+
+// Generate all combinations of operators for a given number of slots
+function generateOperatorsCombinations(slots: number): string[][] {
+  if (slots === 0) return [[]];
+  const smallerCombinations = generateOperatorsCombinations(slots - 1);
+  return smallerCombinations.flatMap((combination) => [
+    [...combination, "+"],
+    [...combination, "*"],
+  ]);
 }
 
 // Example usage
