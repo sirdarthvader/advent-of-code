@@ -1,96 +1,4 @@
 // --- Day 6: Guard Gallivant ---
-// The Historians use their fancy device again, this time to whisk you all away to the North Pole prototype suit manufacturing lab... in the year 1518! It turns out that having direct access to history is very convenient for a group of historians.
-
-// You still have to be careful of time paradoxes, and so it will be important to avoid anyone from 1518 while The Historians search for the Chief. Unfortunately, a single guard is patrolling this part of the lab.
-
-// Maybe you can work out where the guard will go ahead of time so that The Historians can search safely?
-
-// You start by making a map (your puzzle input) of the situation. For example:
-
-// ....#.....
-// .........#
-// ..........
-// ..#.......
-// .......#..
-// ..........
-// .#..^.....
-// ........#.
-// #.........
-// ......#...
-// The map shows the current position of the guard with ^ (to indicate the guard is currently facing up from the perspective of the map). Any obstructions - crates, desks, alchemical reactors, etc. - are shown as #.
-
-// Lab guards in 1518 follow a very strict patrol protocol which involves repeatedly following these steps:
-
-// If there is something directly in front of you, turn right 90 degrees.
-// Otherwise, take a step forward.
-// Following the above protocol, the guard moves up several times until she reaches an obstacle (in this case, a pile of failed suit prototypes):
-
-// ....#.....
-// ....^....#
-// ..........
-// ..#.......
-// .......#..
-// ..........
-// .#........
-// ........#.
-// #.........
-// ......#...
-// Because there is now an obstacle in front of the guard, she turns right before continuing straight in her new facing direction:
-
-// ....#.....
-// ........>#
-// ..........
-// ..#.......
-// .......#..
-// ..........
-// .#........
-// ........#.
-// #.........
-// ......#...
-// Reaching another obstacle (a spool of several very long polymers), she turns right again and continues downward:
-
-// ....#.....
-// .........#
-// ..........
-// ..#.......
-// .......#..
-// ..........
-// .#......v.
-// ........#.
-// #.........
-// ......#...
-// This process continues for a while, but the guard eventually leaves the mapped area (after walking past a tank of universal solvent):
-
-// ....#.....
-// .........#
-// ..........
-// ..#.......
-// .......#..
-// ..........
-// .#........
-// ........#.
-// #.........
-// ......#v..
-// By predicting the guard's route, you can determine which specific positions in the lab will be in the patrol path. Including the guard's starting position, the positions visited by the guard before leaving the area are marked with an X:
-
-// ....#.....
-// ....XXXXX#
-// ....X...X.
-// ..#.X...X.
-// ..XXXXX#X.
-// ..X.X.X.X.
-// .#XXXXXXX.
-// .XXXXXXX#.
-// #XXXXXXX..
-// ......#X..
-// In this example, the guard will visit 41 distinct positions on your map.
-
-// Predict the path of the guard. How many distinct positions will the guard visit before leaving the mapped area?
-
-// Your puzzle answer was 4374.
-
-// The first half of this puzzle is complete! It provides one gold star: *
-
 // --- Part Two ---
 // While The Historians begin working around the guard's patrol route, you borrow their fancy device and step outside the lab. From the safety of a supply closet, you time travel through the last few months and record the nightly status of the lab's guard post on the walls of the closet.
 
@@ -177,3 +85,132 @@
 // It doesn't really matter what you choose to use as an obstacle so long as you and The Historians can put it into position without the guard noticing. The important thing is having enough options that you can find one that minimizes time paradoxes, and in this example, there are 6 different positions you could choose.
 
 // You need to get the guard stuck in a loop by adding a single new obstruction. How many different positions could you choose for this obstruction?
+
+import * as fs from "fs";
+import * as path from "path";
+
+type Direction = "^" | ">" | "v" | "<";
+type Position = [number, number];
+
+function parseInput(map: string[]): {
+  grid: string[][];
+  start: Position;
+  direction: Direction;
+} {
+  let start: Position = [-1, -1];
+  let direction: Direction = "^";
+  const grid = map.map((line, rowIndex) => {
+    return line.split("").map((char, colIndex) => {
+      if (["^", ">", "v", "<"].includes(char)) {
+        start = [rowIndex, colIndex];
+        direction = char as Direction;
+        return ".";
+      }
+      return char;
+    });
+  });
+  return { grid, start, direction };
+}
+
+const moves: Record<Direction, [number, number]> = {
+  "^": [-1, 0],
+  ">": [0, 1],
+  v: [1, 0],
+  "<": [0, -1],
+};
+
+const turnRight: Record<Direction, Direction> = {
+  "^": ">",
+  ">": "v",
+  v: "<",
+  "<": "^",
+};
+
+function simulatePatrol(
+  grid: string[][],
+  start: Position,
+  initialDirection: Direction,
+  detectLoop = false
+): { visitedCount: number; loopDetected: boolean; leftMap: boolean } {
+  const visitedPositions = new Set<string>();
+  // For loop detection: (x,y,dir)
+  const visitedStates = new Set<string>();
+
+  let [x, y] = start;
+  let direction = initialDirection;
+
+  while (true) {
+    visitedPositions.add(`${x},${y}`);
+    const stateKey = `${x},${y},${direction}`;
+
+    if (detectLoop) {
+      if (visitedStates.has(stateKey)) {
+        // loop detected
+        return {
+          visitedCount: visitedPositions.size,
+          loopDetected: true,
+          leftMap: false,
+        };
+      }
+      visitedStates.add(stateKey);
+    }
+
+    const [dx, dy] = moves[direction];
+    const [nextX, nextY] = [x + dx, y + dy];
+
+    // Check if out of bounds
+    if (
+      nextX < 0 ||
+      nextX >= grid.length ||
+      nextY < 0 ||
+      nextY >= grid[0].length
+    ) {
+      // Guard leaves the map
+      return {
+        visitedCount: visitedPositions.size,
+        loopDetected: false,
+        leftMap: true,
+      };
+    }
+
+    // Check if obstacle ahead
+    if (grid[nextX][nextY] === "#") {
+      direction = turnRight[direction]; // Turn right
+    } else {
+      // Move forward
+      x = nextX;
+      y = nextY;
+    }
+  }
+}
+
+function main() {
+  const inputPath = path.resolve(__dirname, "input2.txt");
+  const input = fs.readFileSync(inputPath, "utf-8").trim().split("\n");
+
+  const { grid, start, direction } = parseInput(input);
+  let loopCount = 0;
+  const [startX, startY] = start;
+
+  for (let x = 0; x < grid.length; x++) {
+    for (let y = 0; y < grid[0].length; y++) {
+      // Can't place at the starting position of the guard
+      if (x === startX && y === startY) continue;
+      // Only place on empty spots
+      if (grid[x][y] !== ".") continue;
+
+      // Temporarily place obstruction
+      grid[x][y] = "#";
+      const result = simulatePatrol(grid, start, direction, true);
+      if (result.loopDetected) {
+        loopCount++;
+      }
+      // Remove obstruction
+      grid[x][y] = ".";
+    }
+  }
+
+  console.log("Number of positions that cause a loop (Part 2):", loopCount);
+}
+
+main();

@@ -1,67 +1,90 @@
 import * as fs from "fs";
 import * as path from "path";
 
-/**
- * Computes the number of unique antinode locations within the map.
- * @param input A list of strings, each representing a row of the map.
- */
-function solve(input: string[]): number {
-  const height = input.length;
-  const width = input[0].length;
+type Point = {
+  x: number;
+  y: number;
+};
 
-  // Parse the grid, record antenna positions by frequency
-  const antennasByFreq: Map<string, { x: number; y: number }[]> = new Map();
+function parseInput(input: string): Map<string, Point[]> {
+  const antennas = new Map<string, Point[]>();
 
-  for (let y = 0; y < height; y++) {
-    const line = input[y];
-    for (let x = 0; x < width; x++) {
-      const ch = line[x];
-      if (ch !== ".") {
-        if (!antennasByFreq.has(ch)) {
-          antennasByFreq.set(ch, []);
+  input.split("\n").forEach((line, y) => {
+    line.split("").forEach((char, x) => {
+      if (char !== ".") {
+        if (!antennas.has(char)) {
+          antennas.set(char, []);
         }
-        antennasByFreq.get(ch)!.push({ x, y });
+        antennas.get(char)!.push({ x, y });
+      }
+    });
+  });
+
+  return antennas;
+}
+
+function calculateDistance(p1: Point, p2: Point): number {
+  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+}
+
+function findAntinodes(antennas: Map<string, Point[]>): Set<string> {
+  const antinodes = new Set<string>();
+
+  for (const [freq, points] of antennas) {
+    for (let i = 0; i < points.length; i++) {
+      for (let j = i + 1; j < points.length; j++) {
+        const a = points[i];
+        const b = points[j];
+        const dist = calculateDistance(a, b);
+
+        // Calculate the unit vector between the points
+        const dx = (b.x - a.x) / dist;
+        const dy = (b.y - a.y) / dist;
+
+        // Find antinodes on both sides
+        const antinode1 = {
+          x: Math.round(a.x + dx * dist * 1.5),
+          y: Math.round(a.y + dy * dist * 1.5),
+        };
+
+        const antinode2 = {
+          x: Math.round(a.x - dx * dist * 0.5),
+          y: Math.round(a.y - dy * dist * 0.5),
+        };
+
+        antinodes.add(`${antinode1.x},${antinode1.y}`);
+        antinodes.add(`${antinode2.x},${antinode2.y}`);
       }
     }
   }
 
-  // A set to collect unique antinodes ("x,y" format)
-  const antinodes: Set<string> = new Set();
+  return antinodes;
+}
 
-  // For each frequency group, consider all pairs of antennas
-  for (const [freq, positions] of antennasByFreq.entries()) {
-    if (positions.length < 2) continue;
-
-    for (let i = 0; i < positions.length; i++) {
-      for (let j = i + 1; j < positions.length; j++) {
-        const A = positions[i];
-        const B = positions[j];
-
-        // Compute the two antinodes for this pair
-        // M1 = 2A - B, M2 = 2B - A
-        const M1 = { x: 2 * A.x - B.x, y: 2 * A.y - B.y };
-        const M2 = { x: 2 * B.x - A.x, y: 2 * B.y - A.y };
-
-        // Add them to the set if they are in bounds
-        if (M1.x >= 0 && M1.x < width && M1.y >= 0 && M1.y < height) {
-          antinodes.add(`${M1.x},${M1.y}`);
-        }
-        if (M2.x >= 0 && M2.x < width && M2.y >= 0 && M2.y < height) {
-          antinodes.add(`${M2.x},${M2.y}`);
-        }
-      }
-    }
-  }
+function solveResonantCollinearity(input: string): number {
+  const antennas = parseInput(input);
+  const antinodes = findAntinodes(antennas);
 
   return antinodes.size;
 }
 
-// Construct the full path to the input file at the same level as this file
-const inputFile = path.join(__dirname, "input1.txt");
-const input = fs
-  .readFileSync(inputFile, "utf-8")
-  .split("\n")
-  .filter((line) => line.length > 0);
+// Read input from file
+function readInputFile(): string {
+  try {
+    const inputPath = path.join(__dirname, "input1.txt");
+    return fs.readFileSync(inputPath, "utf-8");
+  } catch (error) {
+    console.error("Error reading input file:", error);
+    process.exit(1);
+  }
+}
 
-// Compute and print the result
-console.log(solve(input));
+// Main execution
+function main() {
+  const input = readInputFile();
+  const result = solveResonantCollinearity(input);
+  console.log("Number of unique antinode locations:", result);
+}
+
+// Run the solution
+main();
